@@ -10,7 +10,7 @@ interface MaxiCardProps {
   gasStyle: string;
   ogEnergy: string;
   flavor: string | null;
-  twitterPfp?: string;
+  generatedPfp?: string | null;
   isLoadingPfp?: boolean;
 }
 
@@ -21,7 +21,7 @@ export function MaxiCard({
   gasStyle,
   ogEnergy,
   flavor,
-  twitterPfp,
+  generatedPfp,
   isLoadingPfp,
 }: MaxiCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
@@ -94,21 +94,21 @@ Check yours at ${window.location.origin}`;
             </h2>
           </div>
           
-          {/* Twitter PFP */}
+          {/* Generated Mumbai PFP */}
           <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-foreground/30 bg-foreground/10">
             {isLoadingPfp ? (
               <div className="w-full h-full flex items-center justify-center">
                 <Loader2 className="h-6 w-6 text-foreground/50 animate-spin" />
               </div>
-            ) : twitterPfp ? (
+            ) : generatedPfp ? (
               <img
-                src={twitterPfp}
-                alt="Twitter PFP"
+                src={generatedPfp}
+                alt="Mumbai PFP"
                 className="w-full h-full object-cover"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-foreground/30 text-2xl font-bold">
-                ?
+                🏙️
               </div>
             )}
           </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { MaxiCard } from "./MaxiCard";
 import { TwitterAnalysis } from "./TwitterAnalysis";
 import { Button } from "@/components/ui/button";
@@ -16,63 +16,44 @@ interface WalletData {
   flavor: string | null;
 }
 
-interface TwitterData {
-  user: {
-    id: string;
-    name: string;
-    username: string;
-    description: string;
-    profileImageUrl: string;
-    followers: number;
-    following: number;
-    tweetCount: number;
-  };
-  blockchain: {
-    score: number;
-    keywords: string[];
-    matchingTweets: number;
-    totalAnalyzed: number;
-  };
-}
-
 interface ResultsViewProps {
   data: WalletData;
   onReset: () => void;
 }
 
 export function ResultsView({ data, onReset }: ResultsViewProps) {
-  const [twitterData, setTwitterData] = useState<TwitterData | null>(null);
-  const [isLoadingTwitter, setIsLoadingTwitter] = useState(true);
+  const [generatedPfp, setGeneratedPfp] = useState<string | null>(null);
+  const [isGeneratingPfp, setIsGeneratingPfp] = useState(true);
 
-  // Auto-fetch Twitter data on mount using the X handle from flavor
+  // Auto-generate Mumbai-styled PFP on mount
   useEffect(() => {
-    const fetchTwitter = async () => {
-      if (!data.flavor) {
-        setIsLoadingTwitter(false);
-        return;
-      }
-
+    const generatePfp = async () => {
       try {
-        const username = data.flavor.replace("@", "");
-        const { data: response, error } = await supabase.functions.invoke("fetch-twitter", {
-          body: { username }
+        const { data: response, error } = await supabase.functions.invoke("generate-pfp", {
+          body: {
+            ethArchetype: data.ethArchetype,
+            mumbaiMode: data.mumbaiMode,
+            blockchainScore: data.score,
+            xHandle: data.flavor?.replace("@", "") || "",
+            keywords: ["ethereum", "web3", "mumbai"]
+          }
         });
 
         if (error) throw error;
         if (response.error) throw new Error(response.error);
 
-        setTwitterData(response);
-        toast.success("Twitter data loaded!");
+        setGeneratedPfp(response.imageUrl);
+        toast.success("Mumbai-styled avatar generated!");
       } catch (error) {
-        console.error("Twitter fetch error:", error);
-        toast.error("Could not load Twitter data");
+        console.error("PFP generation error:", error);
+        toast.error("Could not generate avatar");
       } finally {
-        setIsLoadingTwitter(false);
+        setIsGeneratingPfp(false);
       }
     };
 
-    fetchTwitter();
-  }, [data.flavor]);
+    generatePfp();
+  }, [data]);
 
   return (
     <div className="min-h-screen p-6 py-12">
@@ -93,9 +74,17 @@ export function ResultsView({ data, onReset }: ResultsViewProps) {
           gasStyle={data.gasStyle}
           ogEnergy={data.ogEnergy}
           flavor={data.flavor}
-          twitterPfp={twitterData?.user.profileImageUrl}
-          isLoadingPfp={isLoadingTwitter}
+          generatedPfp={generatedPfp}
+          isLoadingPfp={isGeneratingPfp}
         />
+
+        {/* PFP Generation Status */}
+        {isGeneratingPfp && (
+          <div className="mt-6 flex items-center justify-center gap-3 text-foreground/70">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span>Generating your Mumbai-styled avatar...</span>
+          </div>
+        )}
 
         {/* Twitter Analysis Section */}
         <TwitterAnalysis
@@ -105,7 +94,6 @@ export function ResultsView({ data, onReset }: ResultsViewProps) {
             wallet: data.wallet
           }}
           xHandle={data.flavor?.replace("@", "") || ""}
-          preloadedData={twitterData}
         />
       </div>
     </div>

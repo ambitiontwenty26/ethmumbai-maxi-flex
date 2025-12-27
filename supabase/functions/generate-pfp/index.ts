@@ -11,32 +11,40 @@ serve(async (req) => {
   }
 
   try {
-    const { blockchainScore, keywords, ethArchetype, mumbaiMode } = await req.json();
+    const { blockchainScore, keywords, ethArchetype, mumbaiMode, xHandle } = await req.json();
     
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Create a prompt for pixel art PFP based on blockchain activity
-    const keywordStr = keywords?.length > 0 ? keywords.slice(0, 5).join(', ') : 'ethereum, web3';
+    // Create a Mumbai-styled avatar prompt
+    const keywordStr = keywords?.length > 0 ? keywords.slice(0, 3).join(', ') : 'ethereum, web3';
     
-    const prompt = `Create a pixel art avatar for an Ethereum enthusiast. Style: retro 16-bit gaming aesthetic, vibrant colors. 
-Character traits based on blockchain score ${blockchainScore || 50}%:
-- Archetype: ${ethArchetype || 'Builder'}
-- Vibe: ${mumbaiMode || 'Local'}
+    const prompt = `Create a stylized digital avatar portrait in a vibrant Mumbai street style aesthetic.
+
+Style: Bold pop art meets Indian street art, inspired by Mumbai's colorful chaos
+- Bright, saturated colors with Mumbai vibes (marigold orange, rickshaw yellow, saffron, deep red)
+- Urban Mumbai backdrop elements subtly visible (Gateway of India silhouette, local train patterns, street art motifs)
+- Bollywood poster meets crypto punk aesthetic
+- Dynamic composition with decorative Indian patterns
+
+Character traits:
+- ${ethArchetype || 'Crypto Builder'} energy - confident, forward-looking pose
+- ${mumbaiMode || 'Local'} Mumbai vibe
+- ${xHandle ? `Personality hint: @${xHandle}` : ''}
 - Interests: ${keywordStr}
 
-The avatar should be:
-- Square format, centered character
-- Bold pixel art style like classic game characters
-- Include subtle crypto/blockchain elements (ethereum diamond, nodes, chains)
-- Background should be dynamic with animated-looking patterns
-- Colors: predominantly red and orange tones with accent colors
-- Character should look confident and tech-savvy
-- NO text, NO words, just the pixel art character`;
+Technical requirements:
+- Square format, centered face/upper body portrait
+- High contrast, bold outlines
+- Mumbai street art texture overlay
+- Ethereum/blockchain subtle elements woven into design (diamond shapes, node connections)
+- NO text, NO words, NO letters - pure visual art
 
-    console.log("Generating PFP with prompt:", prompt);
+Make it look like a premium NFT avatar that celebrates Mumbai's spirit with blockchain culture.`;
+
+    console.log("Generating Mumbai-styled PFP for:", xHandle || "anonymous");
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -74,7 +82,7 @@ The avatar should be:
     }
 
     const data = await response.json();
-    console.log("AI response received");
+    console.log("AI response received successfully");
 
     const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
     
@@ -84,7 +92,7 @@ The avatar should be:
 
     return new Response(JSON.stringify({ 
       imageUrl,
-      message: "Pixel art PFP generated successfully!"
+      message: "Mumbai-styled avatar generated!"
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
