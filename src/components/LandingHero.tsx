@@ -20,7 +20,7 @@ export function LandingHero({ onAnalyze, isLoading }: LandingHeroProps) {
     }
 
     try {
-      const accounts = await window.ethereum.request({
+      const accounts = await window.ethereum.request<string[]>({
         method: "eth_requestAccounts",
       });
       

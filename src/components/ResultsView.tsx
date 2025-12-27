@@ -1,5 +1,6 @@
 import { ArrowLeft } from "lucide-react";
 import { MaxiCard } from "./MaxiCard";
+import { TwitterAnalysis } from "./TwitterAnalysis";
 import { Button } from "@/components/ui/button";
 
 interface WalletData {
@@ -37,6 +38,15 @@ export function ResultsView({ data, onReset }: ResultsViewProps) {
           gasStyle={data.gasStyle}
           ogEnergy={data.ogEnergy}
           flavor={data.flavor}
+        />
+
+        {/* Twitter Analysis Section */}
+        <TwitterAnalysis
+          walletData={{
+            ethArchetype: data.ethArchetype,
+            mumbaiMode: data.mumbaiMode,
+            wallet: data.wallet
+          }}
         />
       </div>
     </div>
