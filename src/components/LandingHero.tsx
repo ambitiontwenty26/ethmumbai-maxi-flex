@@ -1,0 +1,128 @@
+import { useState } from "react";
+import { Wallet, Twitter, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+
+interface LandingHeroProps {
+  onAnalyze: (walletAddress: string, xHandle?: string) => void;
+  isLoading: boolean;
+}
+
+export function LandingHero({ onAnalyze, isLoading }: LandingHeroProps) {
+  const [showXInput, setShowXInput] = useState(false);
+  const [xHandle, setXHandle] = useState("");
+
+  const connectWallet = async () => {
+    if (typeof window.ethereum === "undefined") {
+      toast.error("Please install MetaMask to connect your wallet");
+      return;
+    }
+
+    try {
+      const accounts = await window.ethereum.request({
+        method: "eth_requestAccounts",
+      });
+      
+      if (accounts && accounts.length > 0) {
+        onAnalyze(accounts[0], xHandle || undefined);
+      }
+    } catch (error: unknown) {
+      const err = error as { code?: number };
+      if (err.code === 4001) {
+        toast.error("Please connect your wallet to continue");
+      } else {
+        toast.error("Failed to connect wallet");
+      }
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center">
+      {/* Decorative Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-32 h-32 rounded-full border-4 border-foreground/10 animate-float" />
+        <div className="absolute top-40 right-20 w-20 h-20 rounded-full border-4 border-foreground/10 animate-float" style={{ animationDelay: "1s" }} />
+        <div className="absolute bottom-32 left-1/4 w-16 h-16 rounded-full border-4 border-foreground/10 animate-float" style={{ animationDelay: "2s" }} />
+        <div className="absolute bottom-20 right-1/4 w-24 h-24 rounded-full border-4 border-foreground/10 animate-float" style={{ animationDelay: "0.5s" }} />
+      </div>
+
+      {/* Main Content */}
+      <div className="relative z-10 max-w-2xl animate-slide-up">
+        <div className="mb-6">
+          <span className="text-foreground/70 font-mono text-sm tracking-widest uppercase">
+            ETHMUMBAI 2025
+          </span>
+        </div>
+
+        <h1 className="text-5xl md:text-7xl font-bold text-foreground mb-4 tracking-tight">
+          Maxi Checker
+        </h1>
+
+        <p className="text-xl md:text-2xl text-foreground/80 mb-12 font-medium">
+          Check your ETHMumbai DNA 🧬
+        </p>
+
+        <div className="flex flex-col items-center gap-4">
+          <Button
+            onClick={connectWallet}
+            disabled={isLoading}
+            size="lg"
+            className="bg-card text-card-foreground hover:bg-card/90 font-bold text-xl px-10 py-7 rounded-2xl shadow-xl transition-all hover:scale-105 disabled:opacity-50"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-3 h-6 w-6 animate-spin" />
+                Analyzing...
+              </>
+            ) : (
+              <>
+                <Wallet className="mr-3 h-6 w-6" />
+                Connect Wallet
+              </>
+            )}
+          </Button>
+
+          {!showXInput ? (
+            <button
+              onClick={() => setShowXInput(true)}
+              className="text-foreground/60 hover:text-foreground transition-colors text-sm font-medium flex items-center gap-2 mt-2"
+            >
+              <Twitter className="h-4 w-4" />
+              Add X handle (optional)
+            </button>
+          ) : (
+            <div className="flex items-center gap-2 animate-fade-in mt-2">
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  @
+                </span>
+                <Input
+                  type="text"
+                  placeholder="yourhandle"
+                  value={xHandle}
+                  onChange={(e) => setXHandle(e.target.value.replace("@", ""))}
+                  className="pl-8 bg-foreground/10 border-foreground/20 text-foreground placeholder:text-foreground/40 rounded-xl w-48"
+                />
+              </div>
+              <button
+                onClick={() => {
+                  setShowXInput(false);
+                  setXHandle("");
+                }}
+                className="text-foreground/60 hover:text-foreground text-sm"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="absolute bottom-8 text-foreground/50 text-sm font-mono">
+        Built for ETHMumbai • No database • Just vibes
+      </div>
+    </div>
+  );
+}
