@@ -1,90 +1,79 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createHmac } from "node:crypto";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const API_KEY = Deno.env.get("TWITTER_CONSUMER_KEY")?.trim();
-const API_SECRET = Deno.env.get("TWITTER_CONSUMER_SECRET")?.trim();
-const ACCESS_TOKEN = Deno.env.get("TWITTER_ACCESS_TOKEN")?.trim();
-const ACCESS_TOKEN_SECRET = Deno.env.get("TWITTER_ACCESS_TOKEN_SECRET")?.trim();
-
-function validateEnvironmentVariables() {
-  if (!API_KEY) throw new Error("Missing TWITTER_CONSUMER_KEY");
-  if (!API_SECRET) throw new Error("Missing TWITTER_CONSUMER_SECRET");
-  if (!ACCESS_TOKEN) throw new Error("Missing TWITTER_ACCESS_TOKEN");
-  if (!ACCESS_TOKEN_SECRET) throw new Error("Missing TWITTER_ACCESS_TOKEN_SECRET");
+// Get Bearer Token using OAuth 2.0 Client Credentials
+async function getBearerToken(): Promise<string> {
+  const clientId = Deno.env.get("TWITTER_CLIENT_ID")?.trim();
+  const clientSecret = Deno.env.get("TWITTER_CLIENT_SECRET")?.trim();
+  
+  if (!clientId || !clientSecret) {
+    throw new Error("Twitter OAuth 2.0 credentials not configured");
+  }
+  
+  const credentials = btoa(`${clientId}:${clientSecret}`);
+  
+  const response = await fetch("https://api.twitter.com/oauth2/token", {
+    method: "POST",
+    headers: {
+      "Authorization": `Basic ${credentials}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: "grant_type=client_credentials",
+  });
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Bearer token error:", response.status, errorText);
+    throw new Error(`Failed to get bearer token: ${response.status}`);
+  }
+  
+  const data = await response.json();
+  return data.access_token;
 }
 
-function generateOAuthSignature(
-  method: string,
-  url: string,
-  params: Record<string, string>,
-  consumerSecret: string,
-  tokenSecret: string
-): string {
-  const signatureBaseString = `${method}&${encodeURIComponent(url)}&${encodeURIComponent(
-    Object.entries(params)
-      .sort()
-      .map(([k, v]) => `${k}=${v}`)
-      .join("&")
-  )}`;
-  const signingKey = `${encodeURIComponent(consumerSecret)}&${encodeURIComponent(tokenSecret)}`;
-  const hmacSha1 = createHmac("sha1", signingKey);
-  return hmacSha1.update(signatureBaseString).digest("base64");
-}
-
-function generateOAuthHeader(method: string, url: string): string {
-  const oauthParams: Record<string, string> = {
-    oauth_consumer_key: API_KEY!,
-    oauth_nonce: Math.random().toString(36).substring(2),
-    oauth_signature_method: "HMAC-SHA1",
-    oauth_timestamp: Math.floor(Date.now() / 1000).toString(),
-    oauth_token: ACCESS_TOKEN!,
-    oauth_version: "1.0",
-  };
-
-  const signature = generateOAuthSignature(method, url, oauthParams, API_SECRET!, ACCESS_TOKEN_SECRET!);
-  const signedOAuthParams = { ...oauthParams, oauth_signature: signature };
-
-  const entries = Object.entries(signedOAuthParams).sort((a, b) => a[0].localeCompare(b[0]));
-  return "OAuth " + entries.map(([k, v]) => `${encodeURIComponent(k)}="${encodeURIComponent(v)}"`).join(", ");
-}
-
-const BASE_URL = "https://api.x.com/2";
-
-async function getUser() {
-  const url = `${BASE_URL}/users/me?user.fields=profile_image_url,description,public_metrics`;
-  const method = "GET";
-  const baseUrl = `${BASE_URL}/users/me`;
-  const oauthHeader = generateOAuthHeader(method, baseUrl);
+// Fetch user by username
+async function getUserByUsername(username: string, bearerToken: string) {
+  const url = `https://api.twitter.com/2/users/by/username/${username}?user.fields=profile_image_url,description,public_metrics`;
+  
+  console.log("Fetching user:", url);
   
   const response = await fetch(url, {
-    method: method,
     headers: {
-      Authorization: oauthHeader,
-      "Content-Type": "application/json",
+      "Authorization": `Bearer ${bearerToken}`,
     },
   });
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("User fetch error:", response.status, errorText);
+    throw new Error(`Failed to fetch user: ${response.status}`);
+  }
   
   return response.json();
 }
 
-async function getUserTweets(userId: string) {
-  const baseUrl = `${BASE_URL}/users/${userId}/tweets`;
-  const url = `${baseUrl}?max_results=100&tweet.fields=text,created_at`;
-  const method = "GET";
-  const oauthHeader = generateOAuthHeader(method, baseUrl);
+// Fetch user tweets
+async function getUserTweets(userId: string, bearerToken: string) {
+  const url = `https://api.twitter.com/2/users/${userId}/tweets?max_results=100&tweet.fields=text,created_at`;
+  
+  console.log("Fetching tweets for user:", userId);
   
   const response = await fetch(url, {
-    method: method,
     headers: {
-      Authorization: oauthHeader,
-      "Content-Type": "application/json",
+      "Authorization": `Bearer ${bearerToken}`,
     },
   });
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Tweets fetch error:", response.status, errorText);
+    // Return empty array instead of throwing - tweets may be protected
+    return { data: [] };
+  }
   
   return response.json();
 }
@@ -97,7 +86,8 @@ function analyzeBlockchainContent(tweets: { text: string }[]): { score: number; 
     'metamask', 'wallet', 'gas', 'gwei', 'wei', 'token', 'erc20', 'erc721',
     'mint', 'airdrop', 'stake', 'yield', 'liquidity', 'swap', 'uniswap',
     'ens', 'vitalik', 'polygon', 'arbitrum', 'optimism', 'base', 'solana',
-    'cosmos', 'avalanche', 'gmgn', 'wagmi', 'ngmi', 'hodl', 'ape', 'fren'
+    'cosmos', 'avalanche', 'gmgn', 'wagmi', 'ngmi', 'hodl', 'ape', 'fren',
+    'ethmumbai', 'hackathon', 'buidl', 'gm', 'ser', 'anon', 'devcon'
   ];
   
   const foundKeywords = new Set<string>();
@@ -132,23 +122,43 @@ serve(async (req) => {
   }
 
   try {
-    validateEnvironmentVariables();
+    const { username } = await req.json();
     
-    console.log("Fetching Twitter user data...");
-    const userData = await getUser();
+    if (!username) {
+      return new Response(JSON.stringify({ error: "Username required" }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // Clean the username
+    const cleanUsername = username.replace('@', '').trim();
+    
+    console.log("Fetching Twitter data for:", cleanUsername);
+    
+    // Get bearer token
+    const bearerToken = await getBearerToken();
+    console.log("Got bearer token");
+    
+    // Fetch user data
+    const userData = await getUserByUsername(cleanUsername, bearerToken);
     console.log("User data:", JSON.stringify(userData));
     
     if (userData.errors) {
-      throw new Error(userData.errors[0]?.message || "Failed to fetch user");
+      throw new Error(userData.errors[0]?.message || "User not found");
+    }
+    
+    if (!userData.data) {
+      throw new Error("User not found");
     }
     
     const user = userData.data;
     
-    console.log("Fetching user tweets...");
-    const tweetsData = await getUserTweets(user.id);
-    console.log("Tweets response status:", tweetsData.meta?.result_count || 0, "tweets");
-    
+    // Fetch tweets
+    const tweetsData = await getUserTweets(user.id, bearerToken);
     const tweets = tweetsData.data || [];
+    console.log("Fetched", tweets.length, "tweets");
+    
     const analysis = analyzeBlockchainContent(tweets);
     
     return new Response(JSON.stringify({
@@ -156,11 +166,11 @@ serve(async (req) => {
         id: user.id,
         name: user.name,
         username: user.username,
-        description: user.description,
+        description: user.description || "",
         profileImageUrl: user.profile_image_url?.replace('_normal', '_400x400'),
-        followers: user.public_metrics?.followers_count,
-        following: user.public_metrics?.following_count,
-        tweetCount: user.public_metrics?.tweet_count
+        followers: user.public_metrics?.followers_count || 0,
+        following: user.public_metrics?.following_count || 0,
+        tweetCount: user.public_metrics?.tweet_count || 0
       },
       blockchain: {
         score: analysis.score,

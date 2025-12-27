@@ -10,12 +10,40 @@ interface LandingHeroProps {
   isLoading: boolean;
 }
 
+// X handle validation: alphanumeric and underscores only, 1-15 characters
+const validateXHandle = (handle: string): { valid: boolean; error?: string } => {
+  if (!handle.trim()) {
+    return { valid: false, error: "X handle is required" };
+  }
+  if (handle.length > 15) {
+    return { valid: false, error: "X handle must be 15 characters or less" };
+  }
+  if (!/^[a-zA-Z0-9_]+$/.test(handle)) {
+    return { valid: false, error: "Only letters, numbers, and underscores allowed" };
+  }
+  return { valid: true };
+};
+
 export function LandingHero({ onAnalyze, isLoading }: LandingHeroProps) {
   const [xHandle, setXHandle] = useState("");
+  const [xHandleError, setXHandleError] = useState<string | null>(null);
+
+  const handleXHandleChange = (value: string) => {
+    // Remove @ if user types it
+    const cleanValue = value.replace("@", "").replace(/\s/g, "");
+    setXHandle(cleanValue);
+    
+    // Clear error when user starts typing
+    if (xHandleError) {
+      setXHandleError(null);
+    }
+  };
 
   const connectWallet = async () => {
-    if (!xHandle.trim()) {
-      toast.error("Please enter your X handle first");
+    const validation = validateXHandle(xHandle);
+    if (!validation.valid) {
+      setXHandleError(validation.error || "Invalid X handle");
+      toast.error(validation.error || "Invalid X handle");
       return;
     }
 
@@ -41,6 +69,8 @@ export function LandingHero({ onAnalyze, isLoading }: LandingHeroProps) {
       }
     }
   };
+
+  const isValidHandle = xHandle.trim().length > 0 && validateXHandle(xHandle).valid;
 
   return (
     <div className="relative flex flex-col items-center justify-center min-h-screen p-6 text-center overflow-hidden">
@@ -112,7 +142,7 @@ export function LandingHero({ onAnalyze, isLoading }: LandingHeroProps) {
         </div>
 
         <div className="flex flex-col items-center gap-4">
-          {/* X Handle Input - Now Required */}
+          {/* X Handle Input - Required with Validation */}
           <div className="w-full max-w-xs mb-2">
             <label className="text-foreground/80 text-sm font-medium mb-2 flex items-center justify-center gap-2">
               <Twitter className="h-4 w-4" />
@@ -126,17 +156,28 @@ export function LandingHero({ onAnalyze, isLoading }: LandingHeroProps) {
                 type="text"
                 placeholder="yourhandle"
                 value={xHandle}
-                onChange={(e) => setXHandle(e.target.value.replace("@", "").trim())}
-                className="pl-9 bg-foreground/10 border-foreground/20 text-foreground placeholder:text-foreground/40 rounded-xl text-center text-lg py-6"
+                onChange={(e) => handleXHandleChange(e.target.value)}
+                maxLength={15}
+                className={`pl-9 bg-foreground/10 border-foreground/20 text-foreground placeholder:text-foreground/40 rounded-xl text-center text-lg py-6 ${
+                  xHandleError ? "border-destructive" : ""
+                }`}
               />
             </div>
+            {xHandleError && (
+              <p className="text-destructive text-xs mt-1">{xHandleError}</p>
+            )}
+            <p className="text-foreground/40 text-xs mt-1">
+              {xHandle.length}/15 characters
+            </p>
           </div>
 
           <Button
             onClick={connectWallet}
-            disabled={isLoading || !xHandle.trim()}
+            disabled={isLoading || !isValidHandle}
             size="lg"
-            className="bg-card text-card-foreground hover:bg-card/90 font-bold text-xl px-10 py-7 rounded-2xl shadow-xl transition-all hover:scale-105 disabled:opacity-50"
+            className={`bg-card text-card-foreground hover:bg-card/90 font-bold text-xl px-10 py-7 rounded-2xl shadow-xl transition-all hover:scale-105 disabled:opacity-50 ${
+              isValidHandle ? "animate-pulse" : ""
+            }`}
           >
             {isLoading ? (
               <>
