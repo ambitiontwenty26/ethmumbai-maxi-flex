@@ -40,17 +40,19 @@ export function LandingHero({ onAnalyze, isLoading }: LandingHeroProps) {
 
   return (
     <div className="relative flex flex-col items-center justify-center min-h-screen p-6 text-center overflow-hidden">
-      {/* Mumbai Skyline Background GIF - with red overlay */}
+      {/* Mumbai Skyline Background GIF - covering full page with red overlay */}
       <div className="absolute inset-0 pointer-events-none">
         <div 
-          className="absolute bottom-0 left-0 right-0 h-80 bg-cover bg-bottom opacity-20"
+          className="absolute inset-0 bg-cover bg-center"
           style={{ 
             backgroundImage: `url(${mumbaiSkyline})`,
-            mixBlendMode: 'luminosity'
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            opacity: 0.15
           }}
         />
         {/* Red overlay to ensure the red theme dominates */}
-        <div className="absolute inset-0 bg-background/60" />
+        <div className="absolute inset-0 bg-background/70" />
       </div>
 
       {/* Decorative Elements */}
