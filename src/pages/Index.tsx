@@ -1,14 +1,57 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from "react";
+import { LandingHero } from "@/components/LandingHero";
+import { ResultsView } from "@/components/ResultsView";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+
+interface WalletData {
+  wallet: string;
+  score: number;
+  ethArchetype: string;
+  mumbaiMode: string;
+  gasStyle: string;
+  ogEnergy: string;
+  flavor: string | null;
+}
 
 const Index = () => {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
-    </div>
-  );
+  const [isLoading, setIsLoading] = useState(false);
+  const [walletData, setWalletData] = useState<WalletData | null>(null);
+
+  const handleAnalyze = async (walletAddress: string, xHandle?: string) => {
+    setIsLoading(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke("check-wallet", {
+        body: {
+          walletAddress,
+          xHandle,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      setWalletData(data);
+      toast.success("Your ETHMumbai DNA revealed!");
+    } catch (error) {
+      console.error("Analysis error:", error);
+      toast.error("Failed to analyze wallet. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleReset = () => {
+    setWalletData(null);
+  };
+
+  if (walletData) {
+    return <ResultsView data={walletData} onReset={handleReset} />;
+  }
+
+  return <LandingHero onAnalyze={handleAnalyze} isLoading={isLoading} />;
 };
 
 export default Index;
