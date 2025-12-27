@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Twitter, Sparkles, Loader2, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -30,19 +30,35 @@ interface TwitterAnalysisProps {
     mumbaiMode: string;
     wallet: string;
   };
+  xHandle: string;
+  preloadedData?: TwitterData | null;
 }
 
-export function TwitterAnalysis({ walletData }: TwitterAnalysisProps) {
+export function TwitterAnalysis({ walletData, xHandle, preloadedData }: TwitterAnalysisProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [twitterData, setTwitterData] = useState<TwitterData | null>(null);
+  const [twitterData, setTwitterData] = useState<TwitterData | null>(preloadedData || null);
   const [generatedPfp, setGeneratedPfp] = useState<string | null>(null);
   const [isGeneratingPfp, setIsGeneratingPfp] = useState(false);
   const [showPfpCard, setShowPfpCard] = useState(false);
 
+  // Update state when preloaded data comes in
+  useEffect(() => {
+    if (preloadedData) {
+      setTwitterData(preloadedData);
+    }
+  }, [preloadedData]);
+
   const fetchTwitterData = async () => {
+    if (!xHandle) {
+      toast.error("No X handle provided");
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("fetch-twitter");
+      const { data, error } = await supabase.functions.invoke("fetch-twitter", {
+        body: { username: xHandle }
+      });
       
       if (error) throw error;
       if (data.error) throw new Error(data.error);
@@ -51,7 +67,7 @@ export function TwitterAnalysis({ walletData }: TwitterAnalysisProps) {
       toast.success("Twitter data analyzed!");
     } catch (error) {
       console.error("Twitter fetch error:", error);
-      toast.error("Failed to fetch Twitter data. Check your API credentials.");
+      toast.error("Failed to fetch Twitter data. The account may be private.");
     } finally {
       setIsLoading(false);
     }
@@ -104,7 +120,7 @@ export function TwitterAnalysis({ walletData }: TwitterAnalysisProps) {
       {!twitterData ? (
         <div className="text-center py-6">
           <p className="text-foreground/70 mb-4">
-            Analyze your tweets for blockchain activity and generate a unique pixel art PFP
+            Analyzing @{xHandle} for blockchain activity...
           </p>
           <Button
             onClick={fetchTwitterData}
@@ -119,7 +135,7 @@ export function TwitterAnalysis({ walletData }: TwitterAnalysisProps) {
             ) : (
               <>
                 <Twitter className="mr-2 h-4 w-4" />
-                Fetch My Twitter Data
+                Retry Fetch
               </>
             )}
           </Button>
