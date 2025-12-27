@@ -6,15 +6,19 @@ import { toast } from "sonner";
 import mumbaiSkyline from "@/assets/mumbai-skyline.gif";
 
 interface LandingHeroProps {
-  onAnalyze: (walletAddress: string, xHandle?: string) => void;
+  onAnalyze: (walletAddress: string, xHandle: string) => void;
   isLoading: boolean;
 }
 
 export function LandingHero({ onAnalyze, isLoading }: LandingHeroProps) {
-  const [showXInput, setShowXInput] = useState(false);
   const [xHandle, setXHandle] = useState("");
 
   const connectWallet = async () => {
+    if (!xHandle.trim()) {
+      toast.error("Please enter your X handle first");
+      return;
+    }
+
     if (typeof window.ethereum === "undefined") {
       toast.error("Please install MetaMask to connect your wallet");
       return;
@@ -26,7 +30,7 @@ export function LandingHero({ onAnalyze, isLoading }: LandingHeroProps) {
       });
       
       if (accounts && accounts.length > 0) {
-        onAnalyze(accounts[0], xHandle || undefined);
+        onAnalyze(accounts[0], xHandle.trim());
       }
     } catch (error: unknown) {
       const err = error as { code?: number };
@@ -48,11 +52,11 @@ export function LandingHero({ onAnalyze, isLoading }: LandingHeroProps) {
             backgroundImage: `url(${mumbaiSkyline})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
-            opacity: 0.15
+            opacity: 0.25
           }}
         />
         {/* Red overlay to ensure the red theme dominates */}
-        <div className="absolute inset-0 bg-background/70" />
+        <div className="absolute inset-0 bg-background/50" />
       </div>
 
       {/* Decorative Elements */}
@@ -108,9 +112,29 @@ export function LandingHero({ onAnalyze, isLoading }: LandingHeroProps) {
         </div>
 
         <div className="flex flex-col items-center gap-4">
+          {/* X Handle Input - Now Required */}
+          <div className="w-full max-w-xs mb-2">
+            <label className="text-foreground/80 text-sm font-medium mb-2 flex items-center justify-center gap-2">
+              <Twitter className="h-4 w-4" />
+              Your X Handle <span className="text-accent">*</span>
+            </label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground/50 font-medium">
+                @
+              </span>
+              <Input
+                type="text"
+                placeholder="yourhandle"
+                value={xHandle}
+                onChange={(e) => setXHandle(e.target.value.replace("@", "").trim())}
+                className="pl-9 bg-foreground/10 border-foreground/20 text-foreground placeholder:text-foreground/40 rounded-xl text-center text-lg py-6"
+              />
+            </div>
+          </div>
+
           <Button
             onClick={connectWallet}
-            disabled={isLoading}
+            disabled={isLoading || !xHandle.trim()}
             size="lg"
             className="bg-card text-card-foreground hover:bg-card/90 font-bold text-xl px-10 py-7 rounded-2xl shadow-xl transition-all hover:scale-105 disabled:opacity-50"
           >
@@ -126,40 +150,6 @@ export function LandingHero({ onAnalyze, isLoading }: LandingHeroProps) {
               </>
             )}
           </Button>
-
-          {!showXInput ? (
-            <button
-              onClick={() => setShowXInput(true)}
-              className="text-foreground/60 hover:text-foreground transition-colors text-sm font-medium flex items-center gap-2 mt-2"
-            >
-              <Twitter className="h-4 w-4" />
-              Add X handle (optional)
-            </button>
-          ) : (
-            <div className="flex items-center gap-2 animate-fade-in mt-2">
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
-                  @
-                </span>
-                <Input
-                  type="text"
-                  placeholder="yourhandle"
-                  value={xHandle}
-                  onChange={(e) => setXHandle(e.target.value.replace("@", ""))}
-                  className="pl-8 bg-foreground/10 border-foreground/20 text-foreground placeholder:text-foreground/40 rounded-xl w-48"
-                />
-              </div>
-              <button
-                onClick={() => {
-                  setShowXInput(false);
-                  setXHandle("");
-                }}
-                className="text-foreground/60 hover:text-foreground text-sm"
-              >
-                ✕
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
