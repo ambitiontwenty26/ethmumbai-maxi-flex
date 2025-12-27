@@ -2,3 +2,9 @@ project_id = "cbnymuetmlgmxaicveqv"
 
 [functions.check-wallet]
 verify_jwt = false
+
+[functions.fetch-twitter]
+verify_jwt = false
+
+[functions.generate-pfp]
+verify_jwt = false
