@@ -1,9 +1,16 @@
 import { useState, useEffect } from "react";
-import { Twitter, Sparkles, Loader2, ChevronRight } from "lucide-react";
+import { Twitter, Loader2, RefreshCw, Heart, Repeat2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { PFPCard } from "./PFPCard";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+interface Tweet {
+  text: string;
+  likes: number;
+  retweets: number;
+  createdAt: string;
+}
 
 interface TwitterData {
   user: {
@@ -22,6 +29,7 @@ interface TwitterData {
     matchingTweets: number;
     totalAnalyzed: number;
   };
+  tweets: Tweet[];
 }
 
 interface TwitterAnalysisProps {
@@ -31,22 +39,12 @@ interface TwitterAnalysisProps {
     wallet: string;
   };
   xHandle: string;
-  preloadedData?: TwitterData | null;
 }
 
-export function TwitterAnalysis({ walletData, xHandle, preloadedData }: TwitterAnalysisProps) {
+export function TwitterAnalysis({ xHandle }: TwitterAnalysisProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [twitterData, setTwitterData] = useState<TwitterData | null>(preloadedData || null);
-  const [generatedPfp, setGeneratedPfp] = useState<string | null>(null);
-  const [isGeneratingPfp, setIsGeneratingPfp] = useState(false);
-  const [showPfpCard, setShowPfpCard] = useState(false);
-
-  // Update state when preloaded data comes in
-  useEffect(() => {
-    if (preloadedData) {
-      setTwitterData(preloadedData);
-    }
-  }, [preloadedData]);
+  const [twitterData, setTwitterData] = useState<TwitterData | null>(null);
+  const [hasAttempted, setHasAttempted] = useState(false);
 
   const fetchTwitterData = async () => {
     if (!xHandle) {
@@ -55,6 +53,7 @@ export function TwitterAnalysis({ walletData, xHandle, preloadedData }: TwitterA
     }
 
     setIsLoading(true);
+    setHasAttempted(true);
     try {
       const { data, error } = await supabase.functions.invoke("fetch-twitter", {
         body: { username: xHandle }
@@ -67,77 +66,48 @@ export function TwitterAnalysis({ walletData, xHandle, preloadedData }: TwitterA
       toast.success("Twitter data analyzed!");
     } catch (error) {
       console.error("Twitter fetch error:", error);
-      toast.error("Failed to fetch Twitter data. The account may be private.");
+      toast.error("Failed to fetch Twitter data. The account may be private or rate limited.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const generatePfp = async () => {
-    setIsGeneratingPfp(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("generate-pfp", {
-        body: {
-          blockchainScore: twitterData?.blockchain.score || 50,
-          keywords: twitterData?.blockchain.keywords || [],
-          ethArchetype: walletData.ethArchetype,
-          mumbaiMode: walletData.mumbaiMode
-        }
-      });
-      
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
-      
-      setGeneratedPfp(data.imageUrl);
-      setShowPfpCard(true);
-      toast.success("Pixel art PFP generated!");
-    } catch (error) {
-      console.error("PFP generation error:", error);
-      toast.error("Failed to generate PFP. Please try again.");
-    } finally {
-      setIsGeneratingPfp(false);
+  // Auto-fetch on mount if xHandle is provided
+  useEffect(() => {
+    if (xHandle && !hasAttempted) {
+      fetchTwitterData();
     }
-  };
+  }, [xHandle]);
 
-  if (showPfpCard && generatedPfp) {
-    return (
-      <PFPCard
-        imageUrl={generatedPfp}
-        twitterData={twitterData}
-        walletData={walletData}
-        onBack={() => setShowPfpCard(false)}
-      />
-    );
+  if (!xHandle) {
+    return null;
   }
 
   return (
     <div className="mt-8 p-6 rounded-2xl bg-card/10 border border-foreground/10 animate-fade-in">
       <h3 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
         <Twitter className="h-5 w-5" />
-        Twitter Blockchain Analysis
+        Twitter Analysis
       </h3>
       
-      {!twitterData ? (
+      {isLoading ? (
+        <div className="text-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-foreground/50" />
+          <p className="text-foreground/70">Scraping @{xHandle} tweets...</p>
+        </div>
+      ) : !twitterData ? (
         <div className="text-center py-6">
           <p className="text-foreground/70 mb-4">
-            Analyzing @{xHandle} for blockchain activity...
+            {hasAttempted 
+              ? "Could not fetch Twitter data. Try again?"
+              : `Ready to analyze @${xHandle}`}
           </p>
           <Button
             onClick={fetchTwitterData}
-            disabled={isLoading}
             className="bg-foreground/10 hover:bg-foreground/20 text-foreground border border-foreground/20"
           >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Analyzing tweets...
-              </>
-            ) : (
-              <>
-                <Twitter className="mr-2 h-4 w-4" />
-                Retry Fetch
-              </>
-            )}
+            <RefreshCw className="mr-2 h-4 w-4" />
+            {hasAttempted ? "Retry" : "Analyze"}
           </Button>
         </div>
       ) : (
@@ -151,10 +121,21 @@ export function TwitterAnalysis({ walletData, xHandle, preloadedData }: TwitterA
                 className="w-16 h-16 rounded-full border-2 border-foreground/20"
               />
             )}
-            <div>
+            <div className="flex-1">
               <p className="font-bold text-foreground">{twitterData.user.name}</p>
               <p className="text-foreground/60">@{twitterData.user.username}</p>
+              <p className="text-sm text-foreground/50 mt-1">
+                {twitterData.user.followers.toLocaleString()} followers
+              </p>
             </div>
+            <Button
+              onClick={fetchTwitterData}
+              variant="ghost"
+              size="sm"
+              className="text-foreground/50 hover:text-foreground"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
           </div>
 
           {/* Blockchain Score */}
@@ -193,38 +174,36 @@ export function TwitterAnalysis({ walletData, xHandle, preloadedData }: TwitterA
             </div>
           )}
 
-          {/* Generate PFP */}
-          <div className="pt-4 border-t border-foreground/10">
-            {!generatedPfp ? (
-              <Button
-                onClick={generatePfp}
-                disabled={isGeneratingPfp}
-                size="lg"
-                className="w-full bg-accent text-accent-foreground hover:bg-accent/90 font-bold"
-              >
-                {isGeneratingPfp ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Generating Pixel Art PFP...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="mr-2 h-5 w-5" />
-                    Generate My Pixel Art PFP
-                  </>
-                )}
-              </Button>
-            ) : (
-              <Button
-                onClick={() => setShowPfpCard(true)}
-                size="lg"
-                className="w-full bg-accent text-accent-foreground hover:bg-accent/90 font-bold"
-              >
-                View & Mint PFP
-                <ChevronRight className="ml-2 h-5 w-5" />
-              </Button>
-            )}
-          </div>
+          {/* Recent Tweets */}
+          {twitterData.tweets && twitterData.tweets.length > 0 && (
+            <div>
+              <p className="text-sm text-foreground/60 mb-3">Recent Tweets ({twitterData.tweets.length}):</p>
+              <ScrollArea className="h-64 rounded-lg border border-foreground/10">
+                <div className="space-y-3 p-3">
+                  {twitterData.tweets.map((tweet, index) => (
+                    <div
+                      key={index}
+                      className="p-3 bg-foreground/5 rounded-lg text-sm"
+                    >
+                      <p className="text-foreground/90 whitespace-pre-wrap break-words">
+                        {tweet.text}
+                      </p>
+                      <div className="flex items-center gap-4 mt-2 text-foreground/50 text-xs">
+                        <span className="flex items-center gap-1">
+                          <Heart className="h-3 w-3" />
+                          {tweet.likes}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Repeat2 className="h-3 w-3" />
+                          {tweet.retweets}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          )}
         </div>
       )}
     </div>
