@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { Download, Share2, Loader2 } from "lucide-react";
+import { Download, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -10,8 +10,6 @@ interface MaxiCardProps {
   gasStyle: string;
   ogEnergy: string;
   flavor: string | null;
-  generatedPfp?: string | null;
-  isLoadingPfp?: boolean;
 }
 
 export function MaxiCard({
@@ -21,8 +19,6 @@ export function MaxiCard({
   gasStyle,
   ogEnergy,
   flavor,
-  generatedPfp,
-  isLoadingPfp,
 }: MaxiCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -94,23 +90,9 @@ Check yours at ${window.location.origin}`;
             </h2>
           </div>
           
-          {/* Generated Mumbai PFP */}
-          <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-foreground/30 bg-foreground/10">
-            {isLoadingPfp ? (
-              <div className="w-full h-full flex items-center justify-center">
-                <Loader2 className="h-6 w-6 text-foreground/50 animate-spin" />
-              </div>
-            ) : generatedPfp ? (
-              <img
-                src={generatedPfp}
-                alt="Mumbai PFP"
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-foreground/30 text-2xl font-bold">
-                🏙️
-              </div>
-            )}
+          {/* Mumbai Icon */}
+          <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-foreground/30 bg-foreground/10 flex items-center justify-center">
+            <span className="text-4xl">🏙️</span>
           </div>
         </div>
 
